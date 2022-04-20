@@ -18,7 +18,7 @@ Installation
 
 To install, either clone the repo `git clone https://github.com/ncasuk/ncas-radar-wind-profiler-1-tools.git` or download and extract a release version.
 
-Download the required modules using `pip install -r requirements.txt`
+Download the required modules using `conda install --file conda_requirements.txt` `pip install -r requirements.txt`
 
 Usage
 -----
