@@ -285,10 +285,5 @@ def main(nc_file_path=nc_file_path, plots_path=plots_path, mode=mode):
 
 
 if __name__ == "__main__":
-    #yesterday_ncfile = sys.argv[1]
-    #today_ncfile = sys.argv[2]
-    #save_loc = sys.argv[3]
-    #barb_interval = 3
-    #wind_speed_direction_plot_last24(yesterday_ncfile=yesterday_ncfile, today_ncfile=today_ncfile, save_loc=save_loc, barb_interval=barb_interval)
     main(mode="low")
     main(mode="high")
