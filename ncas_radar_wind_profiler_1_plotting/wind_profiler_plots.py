@@ -7,7 +7,6 @@ Create wind speed and direction plot for last 24 and 48 hours from ncas-radar-wi
 from netCDF4 import Dataset
 import matplotlib.pyplot as plt
 import matplotlib.dates as mdates
-import sys
 import numpy as np
 import datetime as dt
 
