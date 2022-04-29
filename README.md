@@ -28,6 +28,7 @@ Navigate into the [ncas_radar_wind_profiler_1_plotting] directory and type  `pyt
 Within `wind_profiler_plots.py`, the following may need adjusting:
 * `nc_file_path="/gws/..."`: replace file path with path to netCDF files
 * `plots_path="/gws/..."`: replace file path with where to save plots
+* `for var in ["upward_air_velocity"...]`: add or replace variables wanted for basic time/altitude contour plots
 
 This script will make plots for both "high-mode" and "low-mode". If plots for only one mode are desired, comment out the other mode at the bottom of the file.
 
