@@ -107,6 +107,7 @@ def simple_2d_plot_last24(variable, yesterday_ncfile, today_ncfile, save_loc):
     ax.set_xlabel('Time', fontsize=28)
     ax.set_title('Last 24 hours', fontsize=32)
     ax.tick_params(axis='both', which='both', labelsize=24)
+    ax.grid(which='both')
 
     cbar = fig.colorbar(pc, ax = ax)
     cbar.ax.set_ylabel(variable, fontsize=28)
@@ -184,6 +185,7 @@ def simple_2d_plot_last48(variable, day_before_yesterday_ncfile, yesterday_ncfil
     ax.set_xlabel('Time', fontsize=28)
     ax.set_title('Last 48 hours', fontsize=32)
     ax.tick_params(axis='both', which='both', labelsize=24)
+    ax.grid(which='both')
 
     cbar = fig.colorbar(pc, ax = ax)
     cbar.ax.set_ylabel(variable, fontsize=28)
@@ -284,7 +286,8 @@ def wind_speed_direction_plot_last24(yesterday_ncfile, today_ncfile, save_loc, b
     ax.set_xlabel('Time', fontsize=28)
     ax.set_title('Last 24 hours', fontsize=32)
     ax.tick_params(axis='both', which='both', labelsize=24)
-    
+    ax.grid(which='both')    
+
     cbar = fig.colorbar(pc, ax = ax)
     cbar.ax.set_ylabel('Wind speed (m/s)', fontsize=28)
     cbar.ax.tick_params(axis='both', which='both', labelsize=20)
@@ -394,7 +397,8 @@ def wind_speed_direction_plot_last48(day_before_yesterday_ncfile, yesterday_ncfi
     ax.set_xlabel('Time', fontsize=28)
     ax.set_title('Last 48 hours', fontsize=32)
     ax.tick_params(axis='both', which='both', labelsize=24)
-    
+    ax.grid(which='both')    
+
     cbar = fig.colorbar(pc, ax = ax)
     cbar.ax.set_ylabel('Wind speed (m/s)', fontsize=28)
     cbar.ax.tick_params(axis='both', which='both', labelsize=20)
