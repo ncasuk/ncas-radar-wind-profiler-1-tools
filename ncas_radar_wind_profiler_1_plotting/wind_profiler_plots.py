@@ -410,7 +410,83 @@ def wind_speed_direction_plot_last48(day_before_yesterday_ncfile, yesterday_ncfi
     plt.savefig(f'{save_loc}/ncas-wind-profiler-1_{mode}-mode_wind-speed-direction_last-48-hours.pdf')
     plt.close()
     
+
+
+def multi_plot_24hrs(variables, yesterday_ncfile, today_ncfile, save_loc):
+    """
+    variable - list
+    """
+    if 'low-mode' in yesterday_ncfile:
+        mode = 'low'
+    else:
+        mode = 'high'
+
+    yesterday_ncfile = Dataset(yesterday_ncfile)
+    today_ncfile = Dataset(today_ncfile)
+
+    # create x axis of all sampling times in last 24 hours
+    # sampling_interval attribute in file should be something like '15 mintues'
+    sampling_interval = int(today_ncfile.sampling_interval.split(' ')[0])
+
+    x_time1 = create_time_xaxis(sampling_interval, days=1)
+    # convert x time units back into datetime format
+    x_time = [dt.datetime.fromtimestamp(time) for time in x_time1]
+
+    # get y axis data
+    if 'altitude' in yesterday_ncfile.dimensions.keys() and 'altitude' in today_ncfile.dimensions.keys():
+        y_altitude = yesterday_ncfile['altitude'][:]
+        altitude_label = 'Altitude (m)'
+    else:
+        y_altitude = range(yesterday_ncfile['altitude'][:].shape[1])
+        altitude_label = 'Index'
+
+    x,y = np.meshgrid(x_time,y_altitude)
     
+    no_plots = len(variables)
+
+    fig = plt.figure(figsize=(40,16*no_plots))
+    fig.set_facecolor('white')
+
+    for n in range(no_plots):
+        variable = variables[n]
+        ax = fig.add_subplot(no_plots,1,n+1)
+         
+        data = np.ma.ones((len(x_time),len(y_altitude))) * -99999
+        data = np.ma.masked_where(data == -99999, data)
+
+        for i, time in enumerate(x_time1):
+            found = False
+            for j, yt in enumerate(yesterday_ncfile['time'][:]):
+                if int(yt) == time:
+                    data[i] = yesterday_ncfile[variable][j]
+                    found = True
+            if not found:
+                for j, tt in enumerate(today_ncfile['time'][:]):
+                    if int(tt) == time:
+                        data[i] = today_ncfile[variable][j]
+        
+        pc = ax.pcolormesh(x,y,data.T)
+        ax.xaxis.set_minor_locator(mdates.HourLocator(byhour=range(0,24,2)))
+        ax.xaxis.set_minor_formatter(mdates.DateFormatter("%H:%M"))
+        ax.xaxis.set_major_locator(mdates.DayLocator())
+        ax.xaxis.set_major_formatter(mdates.DateFormatter("%H:%M\n%Y/%m/%d"))
+        ax.set_ylabel(altitude_label, fontsize=28)
+        ax.set_xlabel('Time (UTC)', fontsize=28)
+        ax.set_title('Last 24 hours', fontsize=32)
+        ax.tick_params(axis='both', which='both', labelsize=24)
+        ax.grid(axis='both', which='both')
+    
+        cbar = fig.colorbar(pc, ax = ax)
+        cbar.ax.set_ylabel(f'{variable} ({today_ncfile[variable].units})', fontsize=28)
+        cbar.ax.tick_params(axis='both', which='both', labelsize=20)
+
+    plt.tight_layout()
+    plt.savefig(f'{save_loc}/ncas-wind-profiler-1_{mode}-mode_multipanel_last-24-hours.png')
+    plt.savefig(f'{save_loc}/ncas-wind-profiler-1_{mode}-mode_multipanel_last-24-hours.pdf')
+    plt.close()
+
+
+
     
 def zero_pad_number(n):
     """
@@ -461,6 +537,7 @@ def main(nc_file_path=nc_file_path, plots_path=plots_path, mode=mode):
         simple_2d_plot_last24(var, f'{nc_file_path}/{yesterday_file}', f'{nc_file_path}/{today_file}', plots_path) 
         simple_2d_plot_last48(var, f'{nc_file_path}/{day_before_yesterday_file}', f'{nc_file_path}/{yesterday_file}', f'{nc_file_path}/{today_file}', plots_path)
 
+    multi_plot_24hrs(['upward_air_velocity', 'signal_to_noise_ratio_minimum', 'spectral_width_of_beam_3'], f'{nc_file_path}/{yesterday_file}', f'{nc_file_path}/{today_file}', plots_path)
 
 
 if __name__ == "__main__":
