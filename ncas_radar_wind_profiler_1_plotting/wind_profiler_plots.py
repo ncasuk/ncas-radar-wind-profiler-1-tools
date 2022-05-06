@@ -110,7 +110,7 @@ def simple_2d_plot_last24(variable, yesterday_ncfile, today_ncfile, save_loc):
     ax.grid(which='both')
 
     cbar = fig.colorbar(pc, ax = ax)
-    cbar.ax.set_ylabel(variable, fontsize=28)
+    cbar.ax.set_ylabel(f'{variable} ({today_ncfile[variable].units})', fontsize=28)
     cbar.ax.tick_params(axis='both', which='both', labelsize=20)
 
     plt.tight_layout()
@@ -188,7 +188,7 @@ def simple_2d_plot_last48(variable, day_before_yesterday_ncfile, yesterday_ncfil
     ax.grid(which='both')
 
     cbar = fig.colorbar(pc, ax = ax)
-    cbar.ax.set_ylabel(variable, fontsize=28)
+    cbar.ax.set_ylabel(f'{variable} ({today_ncfile[variable].units})', fontsize=28)
     cbar.ax.tick_params(axis='both', which='both', labelsize=20)
 
     plt.tight_layout()
