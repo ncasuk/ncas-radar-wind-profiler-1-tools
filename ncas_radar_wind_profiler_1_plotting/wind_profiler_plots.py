@@ -34,13 +34,13 @@ def create_time_xaxis(sampling_interval, days=1):
     Returns:
         array: timestamps
     """
-    current_time = dt.datetime.now()
+    current_time = dt.datetime.now(dt.timezone.utc)
     latest_sample_time = int((current_time.hour * 60 + current_time.minute) / sampling_interval) * sampling_interval
     latest_sample_hour = int(latest_sample_time / 60)
     latest_sample_minute = latest_sample_time - (latest_sample_hour * 60)
 
-    latest_sample_time_data = f"{current_time.year}{current_time.month}{current_time.day}T{latest_sample_hour}{latest_sample_minute}"
-    time_format = "%Y%m%dT%H%M"
+    latest_sample_time_data = f"{current_time.year}{current_time.month}{current_time.day}T{latest_sample_hour}{latest_sample_minute}+0000"
+    time_format = "%Y%m%dT%H%M%z"
     latest_sample_dttime = dt.datetime.strptime(latest_sample_time_data,time_format)
     y_dttime = latest_sample_dttime - dt.timedelta(days=days)
 
@@ -89,7 +89,7 @@ def simple_2d_plot_last24(variable, yesterday_ncfile, today_ncfile, save_loc):
                     data[i] = today_ncfile[variable][j]
 
     # convert x time units back into datetime format
-    x_time = [dt.datetime.fromtimestamp(time) for time in x_time]
+    x_time = [dt.datetime.utcfromtimestamp(time) for time in x_time]
 
     # make and save plot
     x,y = np.meshgrid(x_time,y_altitude)
@@ -104,7 +104,7 @@ def simple_2d_plot_last24(variable, yesterday_ncfile, today_ncfile, save_loc):
     plt.gca().xaxis.set_major_locator(mdates.DayLocator())
     ax.xaxis.set_major_formatter(mdates.DateFormatter("%H:%M\n%Y/%m/%d"))
     ax.set_ylabel(altitude_label, fontsize=28)
-    ax.set_xlabel('Time', fontsize=28)
+    ax.set_xlabel('Time (UTC)', fontsize=28)
     ax.set_title('Last 24 hours', fontsize=32)
     ax.tick_params(axis='both', which='both', labelsize=24)
     ax.grid(which='both')
@@ -167,7 +167,7 @@ def simple_2d_plot_last48(variable, day_before_yesterday_ncfile, yesterday_ncfil
 
 
     # convert x time units back into datetime format
-    x_time = [dt.datetime.fromtimestamp(time) for time in x_time]
+    x_time = [dt.datetime.utcfromtimestamp(time) for time in x_time]
 
     # make and save plot
     x,y = np.meshgrid(x_time,y_altitude)
@@ -182,7 +182,7 @@ def simple_2d_plot_last48(variable, day_before_yesterday_ncfile, yesterday_ncfil
     plt.gca().xaxis.set_major_locator(mdates.DayLocator())
     ax.xaxis.set_major_formatter(mdates.DateFormatter("%H:%M\n%Y/%m/%d"))
     ax.set_ylabel(altitude_label, fontsize=28)
-    ax.set_xlabel('Time', fontsize=28)
+    ax.set_xlabel('Time (UTC)', fontsize=28)
     ax.set_title('Last 48 hours', fontsize=32)
     ax.tick_params(axis='both', which='both', labelsize=24)
     ax.grid(which='both')
@@ -222,18 +222,8 @@ def wind_speed_direction_plot_last24(yesterday_ncfile, today_ncfile, save_loc, b
     # sampling_interval attribute in file should be something like '15 mintues'
     sampling_interval = int(today_ncfile.sampling_interval.split(' ')[0])
     
-    current_time = dt.datetime.now()
-    latest_sample_time = int((current_time.hour * 60 + current_time.minute) / sampling_interval) * sampling_interval
-    latest_sample_hour = int(latest_sample_time / 60)
-    latest_sample_minute = latest_sample_time - (latest_sample_hour * 60)
-    
-    latest_sample_time_data = f"{current_time.year}{current_time.month}{current_time.day}T{latest_sample_hour}{latest_sample_minute}"
-    time_format = "%Y%m%dT%H%M"
-    latest_sample_dttime = dt.datetime.strptime(latest_sample_time_data,time_format)
-    y_dttime = latest_sample_dttime - dt.timedelta(days=1)
-    
-    x_time = np.array(range(int(y_dttime.timestamp()), int(latest_sample_dttime.timestamp())+1, sampling_interval*60))
-    
+    x_time = x_time = create_time_xaxis(sampling_interval, days=1)
+ 
     # get y axis data
     if 'altitude' in yesterday_ncfile.dimensions.keys() and 'altitude' in today_ncfile.dimensions.keys():
         y_altitude = yesterday_ncfile['altitude'][:]
@@ -268,7 +258,7 @@ def wind_speed_direction_plot_last24(yesterday_ncfile, today_ncfile, save_loc, b
     v = data_ws * np.cos(np.deg2rad(data_dir))
 
     # convert x time units back into datetime format
-    x_time = [dt.datetime.fromtimestamp(time) for time in x_time]
+    x_time = [dt.datetime.utcfromtimestamp(time) for time in x_time]
     
     # make and save plot
     x,y = np.meshgrid(x_time,y_altitude)
@@ -283,7 +273,7 @@ def wind_speed_direction_plot_last24(yesterday_ncfile, today_ncfile, save_loc, b
     plt.gca().xaxis.set_major_locator(mdates.DayLocator())
     ax.xaxis.set_major_formatter(mdates.DateFormatter("%H:%M\n%Y/%m/%d"))
     ax.set_ylabel(altitude_label, fontsize=28)
-    ax.set_xlabel('Time', fontsize=28)
+    ax.set_xlabel('Time (UTC)', fontsize=28)
     ax.set_title('Last 24 hours', fontsize=32)
     ax.tick_params(axis='both', which='both', labelsize=24)
     ax.grid(which='both')    
@@ -327,18 +317,8 @@ def wind_speed_direction_plot_last48(day_before_yesterday_ncfile, yesterday_ncfi
     # sampling_interval attribute in file should be something like '15 mintues'
     sampling_interval = int(today_ncfile.sampling_interval.split(' ')[0])
     
-    current_time = dt.datetime.now()
-    latest_sample_time = int((current_time.hour * 60 + current_time.minute) / sampling_interval) * sampling_interval
-    latest_sample_hour = int(latest_sample_time / 60)
-    latest_sample_minute = latest_sample_time - (latest_sample_hour * 60)
-    
-    latest_sample_time_data = f"{current_time.year}{current_time.month}{current_time.day}T{latest_sample_hour}{latest_sample_minute}"
-    time_format = "%Y%m%dT%H%M"
-    latest_sample_dttime = dt.datetime.strptime(latest_sample_time_data,time_format)
-    y_dttime = latest_sample_dttime - dt.timedelta(days=2)
-    
-    x_time = np.array(range(int(y_dttime.timestamp()), int(latest_sample_dttime.timestamp())+1, sampling_interval*60))
-    
+    x_time = create_time_xaxis(sampling_interval, days=2)
+ 
     # get y axis data
     if 'altitude' in yesterday_ncfile.dimensions.keys() and 'altitude' in today_ncfile.dimensions.keys() and 'altitude' in day_before_yesterday_ncfile.dimensions.keys():
         y_altitude = yesterday_ncfile['altitude'][:]
@@ -379,7 +359,7 @@ def wind_speed_direction_plot_last48(day_before_yesterday_ncfile, yesterday_ncfi
     v = data_ws * np.cos(np.deg2rad(data_dir))
 
     # convert x time units back into datetime format
-    x_time = [dt.datetime.fromtimestamp(time) for time in x_time]
+    x_time = [dt.datetime.utcfromtimestamp(time) for time in x_time]
     
     # make and save plot
     x,y = np.meshgrid(x_time,y_altitude)
@@ -394,7 +374,7 @@ def wind_speed_direction_plot_last48(day_before_yesterday_ncfile, yesterday_ncfi
     plt.gca().xaxis.set_major_locator(mdates.DayLocator())
     ax.xaxis.set_major_formatter(mdates.DateFormatter("%H:%M\n%Y/%m/%d"))
     ax.set_ylabel(altitude_label, fontsize=28)
-    ax.set_xlabel('Time', fontsize=28)
+    ax.set_xlabel('Time (UTC)', fontsize=28)
     ax.set_title('Last 48 hours', fontsize=32)
     ax.tick_params(axis='both', which='both', labelsize=24)
     ax.grid(which='both')    
@@ -430,7 +410,7 @@ def multi_plot_24hrs(variables, yesterday_ncfile, today_ncfile, save_loc):
 
     x_time1 = create_time_xaxis(sampling_interval, days=1)
     # convert x time units back into datetime format
-    x_time = [dt.datetime.fromtimestamp(time) for time in x_time1]
+    x_time = [dt.datetime.utcfromtimestamp(time) for time in x_time1]
 
     # get y axis data
     if 'altitude' in yesterday_ncfile.dimensions.keys() and 'altitude' in today_ncfile.dimensions.keys():
@@ -472,7 +452,7 @@ def multi_plot_24hrs(variables, yesterday_ncfile, today_ncfile, save_loc):
         ax.xaxis.set_major_formatter(mdates.DateFormatter("%H:%M\n%Y/%m/%d"))
         ax.set_ylabel(altitude_label, fontsize=28)
         ax.set_xlabel('Time (UTC)', fontsize=28)
-        ax.set_title('Last 24 hours', fontsize=32)
+        #ax.set_title('Last 24 hours', fontsize=32)
         ax.tick_params(axis='both', which='both', labelsize=24)
         ax.grid(axis='both', which='both')
     
