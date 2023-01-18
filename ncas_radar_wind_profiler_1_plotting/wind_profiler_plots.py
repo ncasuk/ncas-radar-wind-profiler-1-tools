@@ -16,8 +16,8 @@ import datetime as dt
 # Options to potentially change #
 #################################
 
-nc_file_path = '/gws/nopw/j04/ncas_obs/cdao/processing/ncas-radar-wind-profiler-1/netcdf_files'
-plots_path = '/gws/nopw/j04/ncas_obs/cdao/public/ncas-radar-wind-profiler-1'
+nc_file_path = '/gws/pw/j07/ncas_obs_vol1/cdao/processing/ncas-radar-wind-profiler-1/netcdf_files'
+plots_path = '/gws/pw/j07/ncas_obs_vol1/cdao/public/ncas-radar-wind-profiler-1'
 mode = 'low'
 
 #################################
