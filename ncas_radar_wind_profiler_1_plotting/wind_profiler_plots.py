@@ -9,7 +9,7 @@ import matplotlib.pyplot as plt
 import matplotlib.dates as mdates
 import numpy as np
 import datetime as dt
-
+import os
 
 
 #################################
@@ -39,7 +39,7 @@ def create_time_xaxis(sampling_interval, days=1):
     latest_sample_hour = int(latest_sample_time / 60)
     latest_sample_minute = latest_sample_time - (latest_sample_hour * 60)
 
-    latest_sample_time_data = f"{current_time.year}{current_time.month}{current_time.day}T{latest_sample_hour}{latest_sample_minute}+0000"
+    latest_sample_time_data = f"{current_time.year}{zero_pad_number(current_time.month)}{zero_pad_number(current_time.day)}T{zero_pad_number(latest_sample_hour)}{zero_pad_number(latest_sample_minute)}+0000"
     time_format = "%Y%m%dT%H%M%z"
     latest_sample_dttime = dt.datetime.strptime(latest_sample_time_data,time_format)
     y_dttime = latest_sample_dttime - dt.timedelta(days=days)
@@ -56,40 +56,61 @@ def simple_2d_plot_last24(variable, yesterday_ncfile, today_ncfile, save_loc):
     else:
         mode = 'high'
 
-    yesterday_ncfile = Dataset(yesterday_ncfile)
-    today_ncfile = Dataset(today_ncfile)
-
-    # create x axis of all sampling times in last 24 hours
-    # sampling_interval attribute in file should be something like '15 mintues'
-    sampling_interval = int(today_ncfile.sampling_interval.split(' ')[0])
-
-    x_time = create_time_xaxis(sampling_interval)
-
-    # get y axis data
-    if 'altitude' in yesterday_ncfile.dimensions.keys() and 'altitude' in today_ncfile.dimensions.keys():
-        y_altitude = yesterday_ncfile['altitude'][:]
-        altitude_label = 'Altitude (m)'
+    if os.path.exists(yesterday_ncfile):
+        yesterday_exists = True 
+        yesterday_ncfile = Dataset(yesterday_ncfile)
+        ncfile = yesterday_ncfile
     else:
-        y_altitude = range(yesterday_ncfile['altitude'][:].shape[1])
-        altitude_label = 'Index'
+        yesterday_exists = False
 
-    data = np.ma.ones((len(x_time),len(y_altitude))) * -99999
-    data = np.ma.masked_where(data == -99999, data)
+    if os.path.exists(today_ncfile):
+        today_exists = True
+        today_ncfile = Dataset(today_ncfile)
+        ncfile = today_ncfile
+    else:
+        today_exists = False
 
-    # fill the arrays with data from the right time when there is data at that time
-    for i, time in enumerate(x_time):
-        found = False
-        for j, yt in enumerate(yesterday_ncfile['time'][:]):
-            if int(yt) == time:
-                data[i] = yesterday_ncfile[variable][j]
-                found = True
-        if not found:
-            for j, tt in enumerate(today_ncfile['time'][:]):
-                if int(tt) == time:
-                    data[i] = today_ncfile[variable][j]
 
-    # convert x time units back into datetime format
-    x_time = [dt.datetime.utcfromtimestamp(time) for time in x_time]
+    # if any files exist, get data
+    # if no file exists, make empty plot
+    if today_exists or yesterday_exists:
+        # create x axis of all sampling times in last 24 hours
+        # sampling_interval attribute in file should be something like '15 mintues'
+        sampling_interval = int(ncfile.sampling_interval.split(' ')[0])
+    
+        x_time = create_time_xaxis(sampling_interval)
+    
+        # get y axis data
+        y_altitude = ncfile['altitude'][:]
+
+        # empty array for data to add to
+        data = np.ma.ones((len(x_time),len(y_altitude))) * -99999
+        data = np.ma.masked_where(data == -99999, data)
+    
+        # fill the arrays with data from the right time when there is data at that time
+        for i, time in enumerate(x_time):
+            found = False
+            if yesterday_exists:
+                for j, yt in enumerate(yesterday_ncfile['time'][:]):
+                    if int(yt) == time:
+                        data[i] = yesterday_ncfile[variable][j]
+                        found = True
+            if not found and today_exists:
+                for j, tt in enumerate(today_ncfile['time'][:]):
+                    if int(tt) == time:
+                        data[i] = today_ncfile[variable][j]
+    
+        # convert x time units back into datetime format
+        x_time = [dt.datetime.utcfromtimestamp(time) for time in x_time]
+
+    else:
+        # data for empty plot
+        x_time = create_time_xaxis(15)
+        x_time = [dt.datetime.utcfromtimestamp(time) for time in x_time]
+        y_altitude = np.linspace(0,8000,9)
+        data = np.ma.ones((len(x_time),len(y_altitude))) * -99999
+        data = np.ma.masked_where(data == -99999, data)
+
 
     # make and save plot
     x,y = np.meshgrid(x_time,y_altitude)
@@ -103,14 +124,17 @@ def simple_2d_plot_last24(variable, yesterday_ncfile, today_ncfile, save_loc):
     ax.xaxis.set_minor_formatter(mdates.DateFormatter("%H:%M"))
     plt.gca().xaxis.set_major_locator(mdates.DayLocator())
     ax.xaxis.set_major_formatter(mdates.DateFormatter("%H:%M\n%Y/%m/%d"))
-    ax.set_ylabel(altitude_label, fontsize=28)
+    ax.set_ylabel('Altitude (m)', fontsize=28)
     ax.set_xlabel('Time (UTC)', fontsize=28)
     ax.set_title('Last 24 hours', fontsize=32)
     ax.tick_params(axis='both', which='both', labelsize=24)
     ax.grid(which='both')
 
     cbar = fig.colorbar(pc, ax = ax)
-    cbar.ax.set_ylabel(f'{variable} ({today_ncfile[variable].units})', fontsize=28)
+    if yesterday_exists or today_exists:
+        cbar.ax.set_ylabel(f'{variable} ({ncfile[variable].units})', fontsize=28)
+    else:
+        cbar.ax.set_ylabel(f'{variable}', fontsize=28)
     cbar.ax.tick_params(axis='both', which='both', labelsize=20)
 
     plt.tight_layout()
@@ -127,47 +151,72 @@ def simple_2d_plot_last48(variable, day_before_yesterday_ncfile, yesterday_ncfil
     else:
         mode = 'high'
 
-    day_before_yesterday_ncfile = Dataset(day_before_yesterday_ncfile)
-    yesterday_ncfile = Dataset(yesterday_ncfile)
-    today_ncfile = Dataset(today_ncfile)
-
-    # create x axis of all sampling times in last 24 hours
-    # sampling_interval attribute in file should be something like '15 mintues'
-    sampling_interval = int(today_ncfile.sampling_interval.split(' ')[0])
-
-    x_time = create_time_xaxis(sampling_interval, days=2)
-
-    # get y axis data
-    if 'altitude' in yesterday_ncfile.dimensions.keys() and 'altitude' in today_ncfile.dimensions.keys():
-        y_altitude = yesterday_ncfile['altitude'][:]
-        altitude_label = 'Altitude (m)'
+    if os.path.exists(day_before_yesterday_ncfile):
+        day_before_yesterday_exists = True
+        day_before_yesterday_ncfile = Dataset(day_before_yesterday_ncfile)
+        ncfile = day_before_yesterday_ncfile
     else:
-        y_altitude = range(yesterday_ncfile['altitude'][:].shape[1])
-        altitude_label = 'Index'
+        day_before_yesterday_exists = False
 
-    data = np.ma.ones((len(x_time),len(y_altitude))) * -99999
-    data = np.ma.masked_where(data == -99999, data)
+    if os.path.exists(yesterday_ncfile):
+        yesterday_exists = True
+        yesterday_ncfile = Dataset(yesterday_ncfile)
+        ncfile = yesterday_ncfile
+    else:
+        yesterday_exists = False
 
-    # fill the arrays with data from the right time when there is data at that time
-    for i, time in enumerate(x_time):
-        found = False
-        for j, dbt in enumerate(day_before_yesterday_ncfile['time'][:]):
-            if int(dbt) == time:
-                data[i] = day_before_yesterday_ncfile[variable][j]
-                found = True
-        if not found:
-            for j, yt in enumerate(yesterday_ncfile['time'][:]):
-                if int(yt) == time:
-                    data[i] = yesterday_ncfile[variable][j]
-                    found = True
-        if not found:
-            for j, tt in enumerate(today_ncfile['time'][:]):
-                if int(tt) == time:
-                    data[i] = today_ncfile[variable][j]
+    if os.path.exists(today_ncfile):
+        today_exists = True
+        today_ncfile = Dataset(today_ncfile)
+        ncfile = today_ncfile
+    else:
+        today_exists = False
 
 
-    # convert x time units back into datetime format
-    x_time = [dt.datetime.utcfromtimestamp(time) for time in x_time]
+    # if any files exist, get data
+    # if no file exists, make empty plot
+    if today_exists or yesterday_exists or day_before_yesterday_exists:
+        # create x axis of all sampling times in last 24 hours
+        # sampling_interval attribute in file should be something like '15 mintues'
+        sampling_interval = int(ncfile.sampling_interval.split(' ')[0])
+
+        x_time = create_time_xaxis(sampling_interval)
+
+        # get y axis data
+        y_altitude = ncfile['altitude'][:]
+
+        # empty array for data to add to
+        data = np.ma.ones((len(x_time),len(y_altitude))) * -99999
+        data = np.ma.masked_where(data == -99999, data)
+
+        # fill the arrays with data from the right time when there is data at that time
+        for i, time in enumerate(x_time):
+            found = False
+            if day_before_yesterday_exists:
+                for j, dbt in enumerate(day_before_yesterday_ncfile['time'][:]):
+                    if int(dbt) == time:
+                        data[i] = day_before_yesterday_ncfile[variable][j]
+                        found = True
+            if not found and yesterday_exists:
+                for j, yt in enumerate(yesterday_ncfile['time'][:]):
+                    if int(yt) == time:
+                        data[i] = yesterday_ncfile[variable][j]
+            if not found and today_exists:
+                for j, tt in enumerate(today_ncfile['time'][:]):
+                    if int(tt) == time:
+                        data[i] = today_ncfile[variable][j]
+
+        # convert x time units back into datetime format
+        x_time = [dt.datetime.utcfromtimestamp(time) for time in x_time]
+
+    else:
+        # data for empty plot
+        x_time = create_time_xaxis(15, days = 2)
+        x_time = [dt.datetime.utcfromtimestamp(time) for time in x_time]
+        y_altitude = np.linspace(0,8000,9)
+        data = np.ma.ones((len(x_time),len(y_altitude))) * -99999
+        data = np.ma.masked_where(data == -99999, data)
+
 
     # make and save plot
     x,y = np.meshgrid(x_time,y_altitude)
@@ -181,14 +230,17 @@ def simple_2d_plot_last48(variable, day_before_yesterday_ncfile, yesterday_ncfil
     ax.xaxis.set_minor_formatter(mdates.DateFormatter("%H:%M"))
     plt.gca().xaxis.set_major_locator(mdates.DayLocator())
     ax.xaxis.set_major_formatter(mdates.DateFormatter("%H:%M\n%Y/%m/%d"))
-    ax.set_ylabel(altitude_label, fontsize=28)
+    ax.set_ylabel('Altitude (m)', fontsize=28)
     ax.set_xlabel('Time (UTC)', fontsize=28)
     ax.set_title('Last 48 hours', fontsize=32)
     ax.tick_params(axis='both', which='both', labelsize=24)
     ax.grid(which='both')
 
     cbar = fig.colorbar(pc, ax = ax)
-    cbar.ax.set_ylabel(f'{variable} ({today_ncfile[variable].units})', fontsize=28)
+    if yesterday_exists or today_exists:
+        cbar.ax.set_ylabel(f'{variable} ({ncfile[variable].units})', fontsize=28)
+    else:
+        cbar.ax.set_ylabel(f'{variable}', fontsize=28)
     cbar.ax.tick_params(axis='both', which='both', labelsize=20)
 
     plt.tight_layout()
@@ -215,50 +267,73 @@ def wind_speed_direction_plot_last24(yesterday_ncfile, today_ncfile, save_loc, b
     else:
         mode = 'high'
     
-    yesterday_ncfile = Dataset(yesterday_ncfile)
-    today_ncfile = Dataset(today_ncfile)
-    
-    # create x axis of all sampling times in last 24 hours
-    # sampling_interval attribute in file should be something like '15 mintues'
-    sampling_interval = int(today_ncfile.sampling_interval.split(' ')[0])
-    
-    x_time = x_time = create_time_xaxis(sampling_interval, days=1)
- 
-    # get y axis data
-    if 'altitude' in yesterday_ncfile.dimensions.keys() and 'altitude' in today_ncfile.dimensions.keys():
-        y_altitude = yesterday_ncfile['altitude'][:]
-        altitude_label = 'Altitude (m)'
+    if os.path.exists(yesterday_ncfile):
+        yesterday_exists = True
+        yesterday_ncfile = Dataset(yesterday_ncfile)
+        ncfile = yesterday_ncfile
     else:
-        y_altitude = range(yesterday_ncfile['altitude'][:].shape[1])
-        altitude_label = 'Index'
+        yesterday_exists = False
+
+    if os.path.exists(today_ncfile):
+        today_exists = True
+        today_ncfile = Dataset(today_ncfile)
+        ncfile = today_ncfile
+    else:
+        today_exists = False
+
     
-    # make empty arrays to fill with data
-    data_ws = np.ma.ones((len(x_time),len(y_altitude))) * -99999
-    data_ws = np.ma.masked_where(data_ws == -99999, data_ws)
-    data_dir = np.ma.ones((len(x_time),len(y_altitude))) * -99999
-    data_dir = np.ma.masked_where(data_dir == -99999, data_dir)
+    # if any files exist, get data
+    # if no file exists, make empty plot
+    if today_exists or yesterday_exists:
+        # create x axis of all sampling times in last 24 hours
+        # sampling_interval attribute in file should be something like '15 mintues'
+        sampling_interval = int(ncfile.sampling_interval.split(' ')[0])
+       
+        x_time = create_time_xaxis(sampling_interval, days=1)
+ 
+        # get y axis data
+        y_altitude = ncfile['altitude'][:]
     
-    # fill the arrays with data from the right time when there is data at that time
-    for i, time in enumerate(x_time):
-        found = False
-        for j, yt in enumerate(yesterday_ncfile['time'][:]):
-            if int(yt) == time:
-                data_ws[i] = yesterday_ncfile['wind_speed'][j]
-                data_dir[i] = yesterday_ncfile['wind_from_direction'][j]
-                found = True
-        if not found:
-            for j, tt in enumerate(today_ncfile['time'][:]):
-                if int(tt) == time:
-                    data_ws[i] = today_ncfile['wind_speed'][j]
-                    data_dir[i] = today_ncfile['wind_from_direction'][j]
+        # make empty arrays to fill with data
+        data_ws = np.ma.ones((len(x_time),len(y_altitude))) * -99999
+        data_ws = np.ma.masked_where(data_ws == -99999, data_ws)
+        data_dir = np.ma.ones((len(x_time),len(y_altitude))) * -99999
+        data_dir = np.ma.masked_where(data_dir == -99999, data_dir)
+    
+        # fill the arrays with data from the right time when there is data at that time
+        for i, time in enumerate(x_time):
+            found = False
+            if yesterday_exists:
+                for j, yt in enumerate(yesterday_ncfile['time'][:]):
+                    if int(yt) == time:
+                        data_ws[i] = yesterday_ncfile['wind_speed'][j]
+                        data_dir[i] = yesterday_ncfile['wind_from_direction'][j]
+                        found = True
+            if not found and today_exists:
+                for j, tt in enumerate(today_ncfile['time'][:]):
+                    if int(tt) == time:
+                        data_ws[i] = today_ncfile['wind_speed'][j]
+                        data_dir[i] = today_ncfile['wind_from_direction'][j]
                     
 
-    # get u and v wind components
-    u = data_ws * np.sin(np.deg2rad(data_dir))
-    v = data_ws * np.cos(np.deg2rad(data_dir))
+        # get u and v wind components
+        u = data_ws * np.sin(np.deg2rad(data_dir))
+        v = data_ws * np.cos(np.deg2rad(data_dir))
 
-    # convert x time units back into datetime format
-    x_time = [dt.datetime.utcfromtimestamp(time) for time in x_time]
+        # convert x time units back into datetime format
+        x_time = [dt.datetime.utcfromtimestamp(time) for time in x_time]
+    else:
+        # data for empty plot
+        x_time = create_time_xaxis(15)
+        x_time = [dt.datetime.utcfromtimestamp(time) for time in x_time]
+        y_altitude = np.linspace(0,8000,9)
+        data_ws = np.ma.ones((len(x_time),len(y_altitude))) * -99999
+        data_ws = np.ma.masked_where(data_ws == -99999, data_ws)
+        data_dir = np.ma.ones((len(x_time),len(y_altitude))) * -99999
+        data_dir = np.ma.masked_where(data_dir == -99999, data_dir)
+        u = data_ws * np.sin(np.deg2rad(data_dir))
+        v = data_ws * np.cos(np.deg2rad(data_dir))
+
     
     # make and save plot
     x,y = np.meshgrid(x_time,y_altitude)
@@ -272,7 +347,7 @@ def wind_speed_direction_plot_last24(yesterday_ncfile, today_ncfile, save_loc, b
     ax.xaxis.set_minor_formatter(mdates.DateFormatter("%H:%M"))
     plt.gca().xaxis.set_major_locator(mdates.DayLocator())
     ax.xaxis.set_major_formatter(mdates.DateFormatter("%H:%M\n%Y/%m/%d"))
-    ax.set_ylabel(altitude_label, fontsize=28)
+    ax.set_ylabel('Altitude (m)', fontsize=28)
     ax.set_xlabel('Time (UTC)', fontsize=28)
     ax.set_title('Last 24 hours', fontsize=32)
     ax.tick_params(axis='both', which='both', labelsize=24)
@@ -309,57 +384,86 @@ def wind_speed_direction_plot_last48(day_before_yesterday_ncfile, yesterday_ncfi
     else:
         mode = 'high'
     
-    day_before_yesterday_ncfile = Dataset(day_before_yesterday_ncfile)
-    yesterday_ncfile = Dataset(yesterday_ncfile)
-    today_ncfile = Dataset(today_ncfile)
-    
-    # create x axis of all sampling times in last 24 hours
-    # sampling_interval attribute in file should be something like '15 mintues'
-    sampling_interval = int(today_ncfile.sampling_interval.split(' ')[0])
-    
-    x_time = create_time_xaxis(sampling_interval, days=2)
- 
-    # get y axis data
-    if 'altitude' in yesterday_ncfile.dimensions.keys() and 'altitude' in today_ncfile.dimensions.keys() and 'altitude' in day_before_yesterday_ncfile.dimensions.keys():
-        y_altitude = yesterday_ncfile['altitude'][:]
-        altitude_label = 'Altitude (m)'
+    if os.path.exists(day_before_yesterday_ncfile):
+        day_before_yesterday_exists = True
+        day_before_yesterday_ncfile = Dataset(day_before_yesterday_ncfile)
+        ncfile = day_before_yesterday_ncfile
     else:
-        y_altitude = range(yesterday_ncfile['altitude'][:].shape[1])
-        altitude_label = 'Index'
+        day_before_yesterday_exists = False
+
+
+    if os.path.exists(yesterday_ncfile):
+        yesterday_exists = True
+        yesterday_ncfile = Dataset(yesterday_ncfile)
+        ncfile = yesterday_ncfile
+    else:
+        yesterday_exists = False
+
+    if os.path.exists(today_ncfile):
+        today_exists = True
+        today_ncfile = Dataset(today_ncfile)
+        ncfile = today_ncfile
+    else:
+        today_exists = False
     
-    # make empty arrays to fill with data
-    data_ws = np.ma.ones((len(x_time),len(y_altitude))) * -99999
-    data_ws = np.ma.masked_where(data_ws == -99999, data_ws)
-    data_dir = np.ma.ones((len(x_time),len(y_altitude))) * -99999
-    data_dir = np.ma.masked_where(data_dir == -99999, data_dir)
-    
-    # fill the arrays with data from the right time when there is data at that time
-    for i, time in enumerate(x_time):
-        found = False
-        for j, dbt in enumerate(day_before_yesterday_ncfile['time'][:]):
-            if int(dbt) == time:
-                data_ws[i] = day_before_yesterday_ncfile['wind_speed'][j]
-                data_dir[i] = day_before_yesterday_ncfile['wind_from_direction'][j]
-                found = True
-        if not found:
-            for j, yt in enumerate(yesterday_ncfile['time'][:]):
-                if int(yt) == time:
-                    data_ws[i] = yesterday_ncfile['wind_speed'][j]
-                    data_dir[i] = yesterday_ncfile['wind_from_direction'][j]
-                    found = True
-        if not found:
-            for j, tt in enumerate(today_ncfile['time'][:]):
-                if int(tt) == time:
-                    data_ws[i] = today_ncfile['wind_speed'][j]
-                    data_dir[i] = today_ncfile['wind_from_direction'][j]
+
+    # if any files exist, get data
+    # if no file exists, make empty plot
+    if today_exists or yesterday_exists or day_before_yesterday_exists:    
+        # create x axis of all sampling times in last 24 hours
+        # sampling_interval attribute in file should be something like '15 mintues'
+        sampling_interval = int(ncfile.sampling_interval.split(' ')[0])
+        
+        x_time = create_time_xaxis(sampling_interval, days=2)
+ 
+        # get y axis data
+        y_altitude = ncfile['altitude'][:]
+ 
+        # make empty arrays to fill with data
+        data_ws = np.ma.ones((len(x_time),len(y_altitude))) * -99999
+        data_ws = np.ma.masked_where(data_ws == -99999, data_ws)
+        data_dir = np.ma.ones((len(x_time),len(y_altitude))) * -99999
+        data_dir = np.ma.masked_where(data_dir == -99999, data_dir)
+        
+        # fill the arrays with data from the right time when there is data at that time
+        for i, time in enumerate(x_time):
+            found = False
+            if day_before_yesterday_exists:
+                for j, dbt in enumerate(day_before_yesterday_ncfile['time'][:]):
+                    if int(dbt) == time:
+                        data_ws[i] = day_before_yesterday_ncfile['wind_speed'][j]
+                        data_dir[i] = day_before_yesterday_ncfile['wind_from_direction'][j]
+                        found = True
+            if not found and yesterday_exists:
+                for j, yt in enumerate(yesterday_ncfile['time'][:]):
+                    if int(yt) == time:
+                        data_ws[i] = yesterday_ncfile['wind_speed'][j]
+                        data_dir[i] = yesterday_ncfile['wind_from_direction'][j]
+                        found = True
+            if not found and today_exists:
+                for j, tt in enumerate(today_ncfile['time'][:]):
+                    if int(tt) == time:
+                        data_ws[i] = today_ncfile['wind_speed'][j]
+                        data_dir[i] = today_ncfile['wind_from_direction'][j]
                     
 
-    # get u and v wind components
-    u = data_ws * np.sin(np.deg2rad(data_dir))
-    v = data_ws * np.cos(np.deg2rad(data_dir))
-
-    # convert x time units back into datetime format
-    x_time = [dt.datetime.utcfromtimestamp(time) for time in x_time]
+        # get u and v wind components
+        u = data_ws * np.sin(np.deg2rad(data_dir))
+        v = data_ws * np.cos(np.deg2rad(data_dir))
+    
+        # convert x time units back into datetime format
+        x_time = [dt.datetime.utcfromtimestamp(time) for time in x_time]
+    else:
+        # data for empty plot
+        x_time = create_time_xaxis(15, days = 2)
+        x_time = [dt.datetime.utcfromtimestamp(time) for time in x_time]
+        y_altitude = np.linspace(0,8000,9)
+        data_ws = np.ma.ones((len(x_time),len(y_altitude))) * -99999
+        data_ws = np.ma.masked_where(data_ws == -99999, data_ws)
+        data_dir = np.ma.ones((len(x_time),len(y_altitude))) * -99999
+        data_dir = np.ma.masked_where(data_dir == -99999, data_dir)
+        u = data_ws * np.sin(np.deg2rad(data_dir))
+        v = data_ws * np.cos(np.deg2rad(data_dir))
     
     # make and save plot
     x,y = np.meshgrid(x_time,y_altitude)
@@ -373,7 +477,7 @@ def wind_speed_direction_plot_last48(day_before_yesterday_ncfile, yesterday_ncfi
     ax.xaxis.set_minor_formatter(mdates.DateFormatter("%H:%M"))
     plt.gca().xaxis.set_major_locator(mdates.DayLocator())
     ax.xaxis.set_major_formatter(mdates.DateFormatter("%H:%M\n%Y/%m/%d"))
-    ax.set_ylabel(altitude_label, fontsize=28)
+    ax.set_ylabel('Altitude (m)', fontsize=28)
     ax.set_xlabel('Time (UTC)', fontsize=28)
     ax.set_title('Last 48 hours', fontsize=32)
     ax.tick_params(axis='both', which='both', labelsize=24)
@@ -401,64 +505,101 @@ def multi_plot_24hrs(variables, yesterday_ncfile, today_ncfile, save_loc):
     else:
         mode = 'high'
 
-    yesterday_ncfile = Dataset(yesterday_ncfile)
-    today_ncfile = Dataset(today_ncfile)
-
-    # create x axis of all sampling times in last 24 hours
-    # sampling_interval attribute in file should be something like '15 mintues'
-    sampling_interval = int(today_ncfile.sampling_interval.split(' ')[0])
-
-    x_time1 = create_time_xaxis(sampling_interval, days=1)
-    # convert x time units back into datetime format
-    x_time = [dt.datetime.utcfromtimestamp(time) for time in x_time1]
-
-    # get y axis data
-    if 'altitude' in yesterday_ncfile.dimensions.keys() and 'altitude' in today_ncfile.dimensions.keys():
-        y_altitude = yesterday_ncfile['altitude'][:]
-        altitude_label = 'Altitude (m)'
+    if os.path.exists(yesterday_ncfile):
+        yesterday_exists = True
+        yesterday_ncfile = Dataset(yesterday_ncfile)
+        ncfile = yesterday_ncfile
     else:
-        y_altitude = range(yesterday_ncfile['altitude'][:].shape[1])
-        altitude_label = 'Index'
+        yesterday_exists = False
 
-    x,y = np.meshgrid(x_time,y_altitude)
+    if os.path.exists(today_ncfile):
+        today_exists = True
+        today_ncfile = Dataset(today_ncfile)
+        ncfile = today_ncfile
+    else:
+        today_exists = False
+
+
+    # if any files exist, get data
+    # if no file exists, make empty plot
+    if today_exists or yesterday_exists:
+        # create x axis of all sampling times in last 24 hours
+        # sampling_interval attribute in file should be something like '15 mintues'
+        sampling_interval = int(ncfile.sampling_interval.split(' ')[0])
+
+        x_time1 = create_time_xaxis(sampling_interval, days=1)
+        # convert x time units back into datetime format
+        x_time = [dt.datetime.utcfromtimestamp(time) for time in x_time1]
+
+        y_altitude = ncfile['altitude'][:]
+
+        x,y = np.meshgrid(x_time,y_altitude)
     
-    no_plots = len(variables)
+        no_plots = len(variables)
 
-    fig = plt.figure(figsize=(40,16*no_plots))
-    fig.set_facecolor('white')
-
-    for n in range(no_plots):
-        variable = variables[n]
-        ax = fig.add_subplot(no_plots,1,n+1)
-         
+        fig = plt.figure(figsize=(40,16*no_plots))
+        fig.set_facecolor('white')
+    
+        for n in range(no_plots):
+            variable = variables[n]
+            ax = fig.add_subplot(no_plots,1,n+1)
+             
+            data = np.ma.ones((len(x_time),len(y_altitude))) * -99999
+            data = np.ma.masked_where(data == -99999, data)
+    
+            for i, time in enumerate(x_time1):
+                found = False
+                if yesterday_exists:
+                    for j, yt in enumerate(yesterday_ncfile['time'][:]):
+                        if int(yt) == time:
+                            data[i] = yesterday_ncfile[variable][j]
+                            found = True
+                if not found and today_exists:
+                    for j, tt in enumerate(today_ncfile['time'][:]):
+                        if int(tt) == time:
+                            data[i] = today_ncfile[variable][j]
+            
+            pc = ax.pcolormesh(x,y,data.T)
+            ax.xaxis.set_minor_locator(mdates.HourLocator(byhour=range(0,24,2)))
+            ax.xaxis.set_minor_formatter(mdates.DateFormatter("%H:%M"))
+            ax.xaxis.set_major_locator(mdates.DayLocator())
+            ax.xaxis.set_major_formatter(mdates.DateFormatter("%H:%M\n%Y/%m/%d"))
+            ax.set_ylabel('Altitude (m)', fontsize=28)
+            ax.set_xlabel('Time (UTC)', fontsize=28)
+            #ax.set_title('Last 24 hours', fontsize=32)
+            ax.tick_params(axis='both', which='both', labelsize=24)
+            ax.grid(axis='both', which='both')
+        
+            cbar = fig.colorbar(pc, ax = ax)
+            cbar.ax.set_ylabel(f'{variable} ({ncfile[variable].units})', fontsize=28)
+            cbar.ax.tick_params(axis='both', which='both', labelsize=20)
+    else:
+        # data for empty plot
+        x_time = create_time_xaxis(15)
+        x_time = [dt.datetime.utcfromtimestamp(time) for time in x_time]
+        y_altitude = np.linspace(0,8000,9)
         data = np.ma.ones((len(x_time),len(y_altitude))) * -99999
         data = np.ma.masked_where(data == -99999, data)
+        x,y = np.meshgrid(x_time,y_altitude)
+        no_plots = len(variables)
+        fig = plt.figure(figsize=(40,16*no_plots))
+        fig.set_facecolor('white')
+        for n in range(no_plots):
+            variable = variables[n]
+            ax = fig.add_subplot(no_plots,1,n+1)
+            pc = ax.pcolormesh(x,y,data.T)
+            ax.xaxis.set_minor_locator(mdates.HourLocator(byhour=range(0,24,2)))
+            ax.xaxis.set_minor_formatter(mdates.DateFormatter("%H:%M"))
+            ax.xaxis.set_major_locator(mdates.DayLocator())
+            ax.xaxis.set_major_formatter(mdates.DateFormatter("%H:%M\n%Y/%m/%d"))
+            ax.set_ylabel('Altitude (m)', fontsize=28)
+            ax.set_xlabel('Time (UTC)', fontsize=28)
+            ax.tick_params(axis='both', which='both', labelsize=24)
+            ax.grid(axis='both', which='both')
 
-        for i, time in enumerate(x_time1):
-            found = False
-            for j, yt in enumerate(yesterday_ncfile['time'][:]):
-                if int(yt) == time:
-                    data[i] = yesterday_ncfile[variable][j]
-                    found = True
-            if not found:
-                for j, tt in enumerate(today_ncfile['time'][:]):
-                    if int(tt) == time:
-                        data[i] = today_ncfile[variable][j]
-        
-        pc = ax.pcolormesh(x,y,data.T)
-        ax.xaxis.set_minor_locator(mdates.HourLocator(byhour=range(0,24,2)))
-        ax.xaxis.set_minor_formatter(mdates.DateFormatter("%H:%M"))
-        ax.xaxis.set_major_locator(mdates.DayLocator())
-        ax.xaxis.set_major_formatter(mdates.DateFormatter("%H:%M\n%Y/%m/%d"))
-        ax.set_ylabel(altitude_label, fontsize=28)
-        ax.set_xlabel('Time (UTC)', fontsize=28)
-        #ax.set_title('Last 24 hours', fontsize=32)
-        ax.tick_params(axis='both', which='both', labelsize=24)
-        ax.grid(axis='both', which='both')
-    
-        cbar = fig.colorbar(pc, ax = ax)
-        cbar.ax.set_ylabel(f'{variable} ({today_ncfile[variable].units})', fontsize=28)
-        cbar.ax.tick_params(axis='both', which='both', labelsize=20)
+            cbar = fig.colorbar(pc, ax = ax)
+            cbar.ax.set_ylabel(f'{variable}', fontsize=28)
+            cbar.ax.tick_params(axis='both', which='both', labelsize=20)
 
     plt.tight_layout()
     plt.savefig(f'{save_loc}/ncas-wind-profiler-1_{mode}-mode_multipanel_last-24-hours.png')
@@ -476,70 +617,115 @@ def multi_plot_48hrs(variables, day_before_yesterday_ncfile, yesterday_ncfile, t
     else:
         mode = 'high'
 
-    day_before_yesterday_ncfile = Dataset(day_before_yesterday_ncfile)
-    yesterday_ncfile = Dataset(yesterday_ncfile)
-    today_ncfile = Dataset(today_ncfile)
-
-    # create x axis of all sampling times in last 24 hours
-    # sampling_interval attribute in file should be something like '15 mintues'
-    sampling_interval = int(today_ncfile.sampling_interval.split(' ')[0])
-
-    x_time1 = create_time_xaxis(sampling_interval, days=2)
-    # convert x time units back into datetime format
-    x_time = [dt.datetime.utcfromtimestamp(time) for time in x_time1]
-
-    # get y axis data
-    if 'altitude' in yesterday_ncfile.dimensions.keys() and 'altitude' in today_ncfile.dimensions.keys():
-        y_altitude = yesterday_ncfile['altitude'][:]
-        altitude_label = 'Altitude (m)'
+    if os.path.exists(day_before_yesterday_ncfile):
+        day_before_yesterday_exists = True
+        day_before_yesterday_ncfile = Dataset(day_before_yesterday_ncfile)
+        ncfile = day_before_yesterday_ncfile
     else:
-        y_altitude = range(yesterday_ncfile['altitude'][:].shape[1])
-        altitude_label = 'Index'
+        day_before_yesterday_exists = False
 
-    x,y = np.meshgrid(x_time,y_altitude)
 
-    no_plots = len(variables)
+    if os.path.exists(yesterday_ncfile):
+        yesterday_exists = True
+        yesterday_ncfile = Dataset(yesterday_ncfile)
+        ncfile = yesterday_ncfile
+    else:
+        yesterday_exists = False
 
-    fig = plt.figure(figsize=(40,16*no_plots))
-    fig.set_facecolor('white')
+    if os.path.exists(today_ncfile):
+        today_exists = True
+        today_ncfile = Dataset(today_ncfile)
+        ncfile = today_ncfile
+    else:
+        today_exists = False
 
-    for n in range(no_plots):
-        variable = variables[n]
-        ax = fig.add_subplot(no_plots,1,n+1)
 
+    # if any files exist, get data
+    # if no file exists, make empty plot
+    if today_exists or yesterday_exists or day_before_yesterday_exists:
+        # create x axis of all sampling times in last 24 hours
+        # sampling_interval attribute in file should be something like '15 mintues'
+        sampling_interval = int(ncfile.sampling_interval.split(' ')[0])
+
+
+        x_time1 = create_time_xaxis(sampling_interval, days=2)
+        # convert x time units back into datetime format
+        x_time = [dt.datetime.utcfromtimestamp(time) for time in x_time1]
+
+        y_altitude = ncfile['altitude'][:]
+
+        x,y = np.meshgrid(x_time,y_altitude)
+
+        no_plots = len(variables)
+    
+        fig = plt.figure(figsize=(40,16*no_plots))
+        fig.set_facecolor('white')
+    
+        for n in range(no_plots):
+            variable = variables[n]
+            ax = fig.add_subplot(no_plots,1,n+1)
+    
+            data = np.ma.ones((len(x_time),len(y_altitude))) * -99999
+            data = np.ma.masked_where(data == -99999, data)
+    
+            for i, time in enumerate(x_time1):
+                found = False
+                if day_before_yesterday_exists:
+                    for j, dbt in enumerate(day_before_yesterday_ncfile['time'][:]):
+                        if int(dbt) == time:
+                            data[i] = day_before_yesterday_ncfile[variable][j]
+                            found = True
+                if not found and yesterday_exists:
+                    for j, yt in enumerate(yesterday_ncfile['time'][:]):
+                        if int(yt) == time:
+                            data[i] = yesterday_ncfile[variable][j]
+                            found = True
+                if not found and today_exists:
+                    for j, tt in enumerate(today_ncfile['time'][:]):
+                        if int(tt) == time:
+                            data[i] = today_ncfile[variable][j]
+
+            pc = ax.pcolormesh(x,y,data.T)
+            ax.xaxis.set_minor_locator(mdates.HourLocator(byhour=range(0,24,2)))
+            ax.xaxis.set_minor_formatter(mdates.DateFormatter("%H:%M"))
+            ax.xaxis.set_major_locator(mdates.DayLocator())
+            ax.xaxis.set_major_formatter(mdates.DateFormatter("%H:%M\n%Y/%m/%d"))
+            ax.set_ylabel('Altitude (m)', fontsize=28)
+            ax.set_xlabel('Time (UTC)', fontsize=28)
+            #ax.set_title('Last 24 hours', fontsize=32)
+            ax.tick_params(axis='both', which='both', labelsize=24)
+            ax.grid(axis='both', which='both')
+
+            cbar = fig.colorbar(pc, ax = ax)
+            cbar.ax.set_ylabel(f'{variable} ({ncfile[variable].units})', fontsize=28)
+            cbar.ax.tick_params(axis='both', which='both', labelsize=20)
+    else:
+        # data for empty plot
+        x_time = create_time_xaxis(15, days = 2)
+        x_time = [dt.datetime.utcfromtimestamp(time) for time in x_time]
+        y_altitude = np.linspace(0,8000,9)
         data = np.ma.ones((len(x_time),len(y_altitude))) * -99999
         data = np.ma.masked_where(data == -99999, data)
+        x,y = np.meshgrid(x_time,y_altitude)
+        no_plots = len(variables)
+        fig = plt.figure(figsize=(40,16*no_plots))
+        fig.set_facecolor('white')
+        for n in range(no_plots):
+            variable = variables[n]
+            ax = fig.add_subplot(no_plots,1,n+1)
+            pc = ax.pcolormesh(x,y,data.T)
+            ax.xaxis.set_minor_locator(mdates.HourLocator(byhour=range(0,24,2)))
+            ax.xaxis.set_minor_formatter(mdates.DateFormatter("%H:%M"))
+            ax.xaxis.set_major_locator(mdates.DayLocator())
+            ax.xaxis.set_major_formatter(mdates.DateFormatter("%H:%M\n%Y/%m/%d"))
+            ax.set_ylabel('Altitude (m)', fontsize=28)
+            ax.set_xlabel('Time (UTC)', fontsize=28)
+            ax.tick_params(axis='both', which='both', labelsize=24)
+            ax.grid(axis='both', which='both')
 
-        for i, time in enumerate(x_time1):
-            found = False
-            for j, dbt in enumerate(day_before_yesterday_ncfile['time'][:]):
-                if int(dbt) == time:
-                    data[i] = day_before_yesterday_ncfile[variable][j]
-                    found = True
-            if not found:
-                for j, yt in enumerate(yesterday_ncfile['time'][:]):
-                    if int(yt) == time:
-                        data[i] = yesterday_ncfile[variable][j]
-                        found = True
-            if not found:
-                for j, tt in enumerate(today_ncfile['time'][:]):
-                    if int(tt) == time:
-                        data[i] = today_ncfile[variable][j]
-
-        pc = ax.pcolormesh(x,y,data.T)
-        ax.xaxis.set_minor_locator(mdates.HourLocator(byhour=range(0,24,2)))
-        ax.xaxis.set_minor_formatter(mdates.DateFormatter("%H:%M"))
-        ax.xaxis.set_major_locator(mdates.DayLocator())
-        ax.xaxis.set_major_formatter(mdates.DateFormatter("%H:%M\n%Y/%m/%d"))
-        ax.set_ylabel(altitude_label, fontsize=28)
-        ax.set_xlabel('Time (UTC)', fontsize=28)
-        #ax.set_title('Last 24 hours', fontsize=32)
-        ax.tick_params(axis='both', which='both', labelsize=24)
-        ax.grid(axis='both', which='both')
-
-        cbar = fig.colorbar(pc, ax = ax)
-        cbar.ax.set_ylabel(f'{variable} ({today_ncfile[variable].units})', fontsize=28)
-        cbar.ax.tick_params(axis='both', which='both', labelsize=20)
+            cbar = fig.colorbar(pc, ax = ax)
+            cbar.ax.set_ylabel(f'{variable}', fontsize=28)
+            cbar.ax.tick_params(axis='both', which='both', labelsize=20)
 
     plt.tight_layout()
     plt.savefig(f'{save_loc}/ncas-wind-profiler-1_{mode}-mode_multipanel_last-48-hours.png')
