@@ -317,8 +317,8 @@ def wind_speed_direction_plot_last24(yesterday_ncfile, today_ncfile, save_loc, b
                     
 
         # get u and v wind components
-        u = data_ws * np.sin(np.deg2rad(data_dir))
-        v = data_ws * np.cos(np.deg2rad(data_dir))
+        u = data_ws * -np.sin(np.deg2rad(data_dir))
+        v = data_ws * -np.cos(np.deg2rad(data_dir))
 
         # convert x time units back into datetime format
         x_time = [dt.datetime.utcfromtimestamp(time) for time in x_time]
@@ -331,8 +331,8 @@ def wind_speed_direction_plot_last24(yesterday_ncfile, today_ncfile, save_loc, b
         data_ws = np.ma.masked_where(data_ws == -99999, data_ws)
         data_dir = np.ma.ones((len(x_time),len(y_altitude))) * -99999
         data_dir = np.ma.masked_where(data_dir == -99999, data_dir)
-        u = data_ws * np.sin(np.deg2rad(data_dir))
-        v = data_ws * np.cos(np.deg2rad(data_dir))
+        u = data_ws * -np.sin(np.deg2rad(data_dir))
+        v = data_ws * -np.cos(np.deg2rad(data_dir))
 
     
     # make and save plot
@@ -448,8 +448,8 @@ def wind_speed_direction_plot_last48(day_before_yesterday_ncfile, yesterday_ncfi
                     
 
         # get u and v wind components
-        u = data_ws * np.sin(np.deg2rad(data_dir))
-        v = data_ws * np.cos(np.deg2rad(data_dir))
+        u = data_ws * -np.sin(np.deg2rad(data_dir))
+        v = data_ws * -np.cos(np.deg2rad(data_dir))
     
         # convert x time units back into datetime format
         x_time = [dt.datetime.utcfromtimestamp(time) for time in x_time]
@@ -462,8 +462,8 @@ def wind_speed_direction_plot_last48(day_before_yesterday_ncfile, yesterday_ncfi
         data_ws = np.ma.masked_where(data_ws == -99999, data_ws)
         data_dir = np.ma.ones((len(x_time),len(y_altitude))) * -99999
         data_dir = np.ma.masked_where(data_dir == -99999, data_dir)
-        u = data_ws * np.sin(np.deg2rad(data_dir))
-        v = data_ws * np.cos(np.deg2rad(data_dir))
+        u = data_ws * -np.sin(np.deg2rad(data_dir))
+        v = data_ws * -np.cos(np.deg2rad(data_dir))
     
     # make and save plot
     x,y = np.meshgrid(x_time,y_altitude)
