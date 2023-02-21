@@ -50,7 +50,12 @@ def create_time_xaxis(sampling_interval, days=1):
 
 
 
-def simple_2d_plot_last24(variable, yesterday_ncfile, today_ncfile, save_loc):
+def add_text(ax,plt,text,xpos=0.0,ypos=1.01,fontsize=12,color='black'):
+    plt.text(xpos,ypos,text,fontsize=fontsize, transform=ax.transAxes, color=color)
+
+
+
+def simple_2d_plot_last24(variable, yesterday_ncfile, today_ncfile, save_loc, cmap='viridis', zero_centre_cbar = False):
     if 'low-mode' in yesterday_ncfile:
         mode = 'low'
     else:
@@ -115,28 +120,32 @@ def simple_2d_plot_last24(variable, yesterday_ncfile, today_ncfile, save_loc):
     # make and save plot
     x,y = np.meshgrid(x_time,y_altitude)
 
-    fig = plt.figure(figsize=(40,16))
+    vmax = np.nanpercentile(np.abs(data.compressed()),98) if zero_centre_cbar else None
+    vmin = -np.nanpercentile(np.abs(data.compressed()),98) if zero_centre_cbar else None
+
+    fig = plt.figure(figsize=(20,8))
     fig.set_facecolor('white')
     ax = fig.add_subplot(111)
     
-    pc = ax.pcolormesh(x,y,data.T)
+    pc = ax.pcolormesh(x,y,data.T,cmap=cmap,vmin=vmin,vmax=vmax)
     plt.gca().xaxis.set_minor_locator(mdates.HourLocator(byhour=range(0,24,2)))
     ax.xaxis.set_minor_formatter(mdates.DateFormatter("%H:%M"))
     plt.gca().xaxis.set_major_locator(mdates.DayLocator())
     ax.xaxis.set_major_formatter(mdates.DateFormatter("%H:%M\n%Y/%m/%d"))
-    ax.set_ylabel('Altitude (m)', fontsize=28)
-    ax.set_xlabel('Time (UTC)', fontsize=28)
-    ax.set_title('Last 24 hours', fontsize=32)
-    ax.tick_params(axis='both', which='both', labelsize=24)
+    ax.set_ylabel('Altitude (m)', fontsize=17)
+    ax.set_xlabel('Time (UTC)', fontsize=17)
+    ax.set_title('Last 24 hours', fontsize=19)
+    ax.tick_params(axis='both', which='both', labelsize=14)
     ax.grid(which='both')
 
     cbar = fig.colorbar(pc, ax = ax)
     if yesterday_exists or today_exists:
-        cbar.ax.set_ylabel(f'{variable} ({ncfile[variable].units})', fontsize=28)
+        cbar.ax.set_ylabel(f'{variable} ({ncfile[variable].units})', fontsize=17)
     else:
-        cbar.ax.set_ylabel(f'{variable}', fontsize=28)
-    cbar.ax.tick_params(axis='both', which='both', labelsize=20)
+        cbar.ax.set_ylabel(f'{variable}', fontsize=17)
+    cbar.ax.tick_params(axis='both', which='both', labelsize=12)
 
+    add_text(ax,plt,'NCAS Radar Wind Profiler 1\nCapel Dewi Atmospheric Observatory, Wales, UK')
     plt.tight_layout()
     plt.savefig(f'{save_loc}/ncas-wind-profiler-1_{mode}-mode_{variable.lower()}_last-24-hours.png')
     plt.savefig(f'{save_loc}/ncas-wind-profiler-1_{mode}-mode_{variable.lower()}_last-24-hours.pdf')
@@ -145,7 +154,7 @@ def simple_2d_plot_last24(variable, yesterday_ncfile, today_ncfile, save_loc):
 
 
 
-def simple_2d_plot_last48(variable, day_before_yesterday_ncfile, yesterday_ncfile, today_ncfile, save_loc):
+def simple_2d_plot_last48(variable, day_before_yesterday_ncfile, yesterday_ncfile, today_ncfile, save_loc, cmap='viridis', zero_centre_cbar=False):
     if 'low-mode' in yesterday_ncfile:
         mode = 'low'
     else:
@@ -180,7 +189,7 @@ def simple_2d_plot_last48(variable, day_before_yesterday_ncfile, yesterday_ncfil
         # sampling_interval attribute in file should be something like '15 mintues'
         sampling_interval = int(ncfile.sampling_interval.split(' ')[0])
 
-        x_time = create_time_xaxis(sampling_interval)
+        x_time = create_time_xaxis(sampling_interval, days = 2)
 
         # get y axis data
         y_altitude = ncfile['altitude'][:]
@@ -221,28 +230,33 @@ def simple_2d_plot_last48(variable, day_before_yesterday_ncfile, yesterday_ncfil
     # make and save plot
     x,y = np.meshgrid(x_time,y_altitude)
 
-    fig = plt.figure(figsize=(40,16))
+    vmax = np.nanpercentile(np.abs(data.compressed()),98) if zero_centre_cbar else None
+    vmin = -np.nanpercentile(np.abs(data.compressed()),98) if zero_centre_cbar else None
+
+    fig = plt.figure(figsize=(20,8))
     fig.set_facecolor('white')
     ax = fig.add_subplot(111)
 
-    pc = ax.pcolormesh(x,y,data.T)
+    pc = ax.pcolormesh(x,y,data.T,cmap=cmap,vmin=vmin,vmax=vmax)
     plt.gca().xaxis.set_minor_locator(mdates.HourLocator(byhour=range(0,24,2)))
     ax.xaxis.set_minor_formatter(mdates.DateFormatter("%H:%M"))
     plt.gca().xaxis.set_major_locator(mdates.DayLocator())
     ax.xaxis.set_major_formatter(mdates.DateFormatter("%H:%M\n%Y/%m/%d"))
-    ax.set_ylabel('Altitude (m)', fontsize=28)
-    ax.set_xlabel('Time (UTC)', fontsize=28)
-    ax.set_title('Last 48 hours', fontsize=32)
-    ax.tick_params(axis='both', which='both', labelsize=24)
+    ax.set_ylabel('Altitude (m)', fontsize=17)
+    ax.set_xlabel('Time (UTC)', fontsize=17)
+    ax.set_title('Last 48 hours', fontsize=19)
+    ax.tick_params(axis='both', which='both', labelsize=14)
     ax.grid(which='both')
 
     cbar = fig.colorbar(pc, ax = ax)
     if yesterday_exists or today_exists:
-        cbar.ax.set_ylabel(f'{variable} ({ncfile[variable].units})', fontsize=28)
+        cbar.ax.set_ylabel(f'{variable} ({ncfile[variable].units})', fontsize=17)
     else:
-        cbar.ax.set_ylabel(f'{variable}', fontsize=28)
-    cbar.ax.tick_params(axis='both', which='both', labelsize=20)
+        cbar.ax.set_ylabel(f'{variable}', fontsize=17)
+    cbar.ax.tick_params(axis='both', which='both', labelsize=12)
 
+    
+    add_text(ax,plt,'NCAS Radar Wind Profiler 1\nCapel Dewi Atmospheric Observatory, Wales, UK')
     plt.tight_layout()
     plt.savefig(f'{save_loc}/ncas-wind-profiler-1_{mode}-mode_{variable.lower()}_last-48-hours.png')
     plt.savefig(f'{save_loc}/ncas-wind-profiler-1_{mode}-mode_{variable.lower()}_last-48-hours.pdf')
@@ -338,7 +352,7 @@ def wind_speed_direction_plot_last24(yesterday_ncfile, today_ncfile, save_loc, b
     # make and save plot
     x,y = np.meshgrid(x_time,y_altitude)
     
-    fig = plt.figure(figsize=(40,16))
+    fig = plt.figure(figsize=(20,8))
     fig.set_facecolor('white')
     ax = fig.add_subplot(111)
     
@@ -347,18 +361,26 @@ def wind_speed_direction_plot_last24(yesterday_ncfile, today_ncfile, save_loc, b
     ax.xaxis.set_minor_formatter(mdates.DateFormatter("%H:%M"))
     plt.gca().xaxis.set_major_locator(mdates.DayLocator())
     ax.xaxis.set_major_formatter(mdates.DateFormatter("%H:%M\n%Y/%m/%d"))
-    ax.set_ylabel('Altitude (m)', fontsize=28)
-    ax.set_xlabel('Time (UTC)', fontsize=28)
-    ax.set_title('Last 24 hours', fontsize=32)
-    ax.tick_params(axis='both', which='both', labelsize=24)
+    ax.set_ylabel('Altitude (m)', fontsize=17)
+    ax.set_xlabel('Time (UTC)', fontsize=17)
+    ax.set_title('Last 24 hours', fontsize=19)
+    ax.tick_params(axis='both', which='both', labelsize=14)
     ax.grid(which='both')    
 
     cbar = fig.colorbar(pc, ax = ax)
-    cbar.ax.set_ylabel('Wind speed (m/s)', fontsize=28)
-    cbar.ax.tick_params(axis='both', which='both', labelsize=20)
+    cbar.ax.set_ylabel('Wind speed (m/s)', fontsize=17)
+    cbar.ax.tick_params(axis='both', which='both', labelsize=12)
     
-    ax.barbs(x[::barb_interval,::barb_interval], y[::barb_interval,::barb_interval], u[::barb_interval,::barb_interval].T, v[::barb_interval,::barb_interval].T, length = 10)
-    
+    #ax.barbs(x[::barb_interval,::barb_interval], y[::barb_interval,::barb_interval], u[::barb_interval,::barb_interval].T, v[::barb_interval,::barb_interval].T, length = 6)
+    # want all arrows to be same length
+    arrow_length = 1
+    v1 = (((arrow_length ** 2) / ((u**2 / v**2) + 1)) ** 0.5) * np.sign(v)
+    u1 = (v1/v)*u 
+
+    ax.quiver(x[::barb_interval,::barb_interval], y[::barb_interval,::barb_interval], u1[::barb_interval,::barb_interval].T, v1[::barb_interval,::barb_interval].T, scale=48, scale_units='width')
+
+    add_text(ax,plt,'NCAS Radar Wind Profiler 1\nCapel Dewi Atmospheric Observatory, Wales, UK') 
+
     plt.tight_layout()
     plt.savefig(f'{save_loc}/ncas-wind-profiler-1_{mode}-mode_wind-speed-direction_last-24-hours.png')
     plt.savefig(f'{save_loc}/ncas-wind-profiler-1_{mode}-mode_wind-speed-direction_last-24-hours.pdf')
@@ -468,7 +490,7 @@ def wind_speed_direction_plot_last48(day_before_yesterday_ncfile, yesterday_ncfi
     # make and save plot
     x,y = np.meshgrid(x_time,y_altitude)
     
-    fig = plt.figure(figsize=(40,16))
+    fig = plt.figure(figsize=(20,8))
     fig.set_facecolor('white')
     ax = fig.add_subplot(111)
     
@@ -477,17 +499,26 @@ def wind_speed_direction_plot_last48(day_before_yesterday_ncfile, yesterday_ncfi
     ax.xaxis.set_minor_formatter(mdates.DateFormatter("%H:%M"))
     plt.gca().xaxis.set_major_locator(mdates.DayLocator())
     ax.xaxis.set_major_formatter(mdates.DateFormatter("%H:%M\n%Y/%m/%d"))
-    ax.set_ylabel('Altitude (m)', fontsize=28)
-    ax.set_xlabel('Time (UTC)', fontsize=28)
-    ax.set_title('Last 48 hours', fontsize=32)
-    ax.tick_params(axis='both', which='both', labelsize=24)
+    ax.set_ylabel('Altitude (m)', fontsize=17)
+    ax.set_xlabel('Time (UTC)', fontsize=17)
+    ax.set_title('Last 48 hours', fontsize=19)
+    ax.tick_params(axis='both', which='both', labelsize=14)
     ax.grid(which='both')    
 
     cbar = fig.colorbar(pc, ax = ax)
-    cbar.ax.set_ylabel('Wind speed (m/s)', fontsize=28)
-    cbar.ax.tick_params(axis='both', which='both', labelsize=20)
+    cbar.ax.set_ylabel('Wind speed (m/s)', fontsize=17)
+    cbar.ax.tick_params(axis='both', which='both', labelsize=12)
     
-    ax.barbs(x[::barb_interval,::barb_interval], y[::barb_interval,::barb_interval], u[::barb_interval,::barb_interval].T, v[::barb_interval,::barb_interval].T, length = 10)
+    #ax.barbs(x[::barb_interval,::barb_interval], y[::barb_interval,::barb_interval], u[::barb_interval,::barb_interval].T, v[::barb_interval,::barb_interval].T, length = 6)
+    # want all arrows to be same length
+    arrow_length = 1
+    v1 = (((arrow_length ** 2) / ((u**2 / v**2) + 1)) ** 0.5) * np.sign(v)
+    u1 = (v1/v)*u
+
+    ax.quiver(x[::barb_interval,::barb_interval], y[::barb_interval,::barb_interval], u1[::barb_interval,::barb_interval].T, v1[::barb_interval,::barb_interval].T, scale=48, scale_units='width')
+
+
+    add_text(ax,plt,'NCAS Radar Wind Profiler 1\nCapel Dewi Atmospheric Observatory, Wales, UK')    
     
     plt.tight_layout()
     plt.savefig(f'{save_loc}/ncas-wind-profiler-1_{mode}-mode_wind-speed-direction_last-48-hours.png')
@@ -537,7 +568,7 @@ def multi_plot_24hrs(variables, yesterday_ncfile, today_ncfile, save_loc):
     
         no_plots = len(variables)
 
-        fig = plt.figure(figsize=(40,16*no_plots))
+        fig = plt.figure(figsize=(20,8*no_plots))
         fig.set_facecolor('white')
     
         for n in range(no_plots):
@@ -564,15 +595,18 @@ def multi_plot_24hrs(variables, yesterday_ncfile, today_ncfile, save_loc):
             ax.xaxis.set_minor_formatter(mdates.DateFormatter("%H:%M"))
             ax.xaxis.set_major_locator(mdates.DayLocator())
             ax.xaxis.set_major_formatter(mdates.DateFormatter("%H:%M\n%Y/%m/%d"))
-            ax.set_ylabel('Altitude (m)', fontsize=28)
-            ax.set_xlabel('Time (UTC)', fontsize=28)
-            #ax.set_title('Last 24 hours', fontsize=32)
-            ax.tick_params(axis='both', which='both', labelsize=24)
+            ax.set_ylabel('Altitude (m)', fontsize=17)
+            ax.set_xlabel('Time (UTC)', fontsize=17)
+            #ax.set_title('Last 24 hours', fontsize=19)
+            ax.tick_params(axis='both', which='both', labelsize=14)
             ax.grid(axis='both', which='both')
-        
+
+            if n == 0:
+                add_text(ax,plt,'NCAS Radar Wind Profiler 1\nCapel Dewi Atmospheric Observatory, Wales, UK')        
+
             cbar = fig.colorbar(pc, ax = ax)
-            cbar.ax.set_ylabel(f'{variable} ({ncfile[variable].units})', fontsize=28)
-            cbar.ax.tick_params(axis='both', which='both', labelsize=20)
+            cbar.ax.set_ylabel(f'{variable} ({ncfile[variable].units})', fontsize=17)
+            cbar.ax.tick_params(axis='both', which='both', labelsize=12)
     else:
         # data for empty plot
         x_time = create_time_xaxis(15)
@@ -582,7 +616,7 @@ def multi_plot_24hrs(variables, yesterday_ncfile, today_ncfile, save_loc):
         data = np.ma.masked_where(data == -99999, data)
         x,y = np.meshgrid(x_time,y_altitude)
         no_plots = len(variables)
-        fig = plt.figure(figsize=(40,16*no_plots))
+        fig = plt.figure(figsize=(20,8*no_plots))
         fig.set_facecolor('white')
         for n in range(no_plots):
             variable = variables[n]
@@ -592,14 +626,18 @@ def multi_plot_24hrs(variables, yesterday_ncfile, today_ncfile, save_loc):
             ax.xaxis.set_minor_formatter(mdates.DateFormatter("%H:%M"))
             ax.xaxis.set_major_locator(mdates.DayLocator())
             ax.xaxis.set_major_formatter(mdates.DateFormatter("%H:%M\n%Y/%m/%d"))
-            ax.set_ylabel('Altitude (m)', fontsize=28)
-            ax.set_xlabel('Time (UTC)', fontsize=28)
-            ax.tick_params(axis='both', which='both', labelsize=24)
+            ax.set_ylabel('Altitude (m)', fontsize=17)
+            ax.set_xlabel('Time (UTC)', fontsize=17)
+            ax.tick_params(axis='both', which='both', labelsize=14)
             ax.grid(axis='both', which='both')
 
+            if n == 0:
+                add_text(ax,plt,'NCAS Radar Wind Profiler 1\nCapel Dewi Atmospheric Observatory, Wales, UK')
+
             cbar = fig.colorbar(pc, ax = ax)
-            cbar.ax.set_ylabel(f'{variable}', fontsize=28)
-            cbar.ax.tick_params(axis='both', which='both', labelsize=20)
+            cbar.ax.set_ylabel(f'{variable}', fontsize=17)
+            cbar.ax.tick_params(axis='both', which='both', labelsize=12)
+
 
     plt.tight_layout()
     plt.savefig(f'{save_loc}/ncas-wind-profiler-1_{mode}-mode_multipanel_last-24-hours.png')
@@ -658,7 +696,7 @@ def multi_plot_48hrs(variables, day_before_yesterday_ncfile, yesterday_ncfile, t
 
         no_plots = len(variables)
     
-        fig = plt.figure(figsize=(40,16*no_plots))
+        fig = plt.figure(figsize=(20,8*no_plots))
         fig.set_facecolor('white')
     
         for n in range(no_plots):
@@ -690,15 +728,18 @@ def multi_plot_48hrs(variables, day_before_yesterday_ncfile, yesterday_ncfile, t
             ax.xaxis.set_minor_formatter(mdates.DateFormatter("%H:%M"))
             ax.xaxis.set_major_locator(mdates.DayLocator())
             ax.xaxis.set_major_formatter(mdates.DateFormatter("%H:%M\n%Y/%m/%d"))
-            ax.set_ylabel('Altitude (m)', fontsize=28)
-            ax.set_xlabel('Time (UTC)', fontsize=28)
-            #ax.set_title('Last 24 hours', fontsize=32)
-            ax.tick_params(axis='both', which='both', labelsize=24)
+            ax.set_ylabel('Altitude (m)', fontsize=17)
+            ax.set_xlabel('Time (UTC)', fontsize=17)
+            #ax.set_title('Last 24 hours', fontsize=19)
+            ax.tick_params(axis='both', which='both', labelsize=14)
             ax.grid(axis='both', which='both')
 
+            if n == 0:
+                add_text(ax,plt,'NCAS Radar Wind Profiler 1\nCapel Dewi Atmospheric Observatory, Wales, UK')
+
             cbar = fig.colorbar(pc, ax = ax)
-            cbar.ax.set_ylabel(f'{variable} ({ncfile[variable].units})', fontsize=28)
-            cbar.ax.tick_params(axis='both', which='both', labelsize=20)
+            cbar.ax.set_ylabel(f'{variable} ({ncfile[variable].units})', fontsize=17)
+            cbar.ax.tick_params(axis='both', which='both', labelsize=12)
     else:
         # data for empty plot
         x_time = create_time_xaxis(15, days = 2)
@@ -708,7 +749,7 @@ def multi_plot_48hrs(variables, day_before_yesterday_ncfile, yesterday_ncfile, t
         data = np.ma.masked_where(data == -99999, data)
         x,y = np.meshgrid(x_time,y_altitude)
         no_plots = len(variables)
-        fig = plt.figure(figsize=(40,16*no_plots))
+        fig = plt.figure(figsize=(20,8*no_plots))
         fig.set_facecolor('white')
         for n in range(no_plots):
             variable = variables[n]
@@ -718,14 +759,18 @@ def multi_plot_48hrs(variables, day_before_yesterday_ncfile, yesterday_ncfile, t
             ax.xaxis.set_minor_formatter(mdates.DateFormatter("%H:%M"))
             ax.xaxis.set_major_locator(mdates.DayLocator())
             ax.xaxis.set_major_formatter(mdates.DateFormatter("%H:%M\n%Y/%m/%d"))
-            ax.set_ylabel('Altitude (m)', fontsize=28)
-            ax.set_xlabel('Time (UTC)', fontsize=28)
-            ax.tick_params(axis='both', which='both', labelsize=24)
+            ax.set_ylabel('Altitude (m)', fontsize=17)
+            ax.set_xlabel('Time (UTC)', fontsize=17)
+            ax.tick_params(axis='both', which='both', labelsize=14)
             ax.grid(axis='both', which='both')
+            if n == 0:
+                add_text(ax,plt,'NCAS Radar Wind Profiler 1\nCapel Dewi Atmospheric Observatory, Wales, UK')
 
             cbar = fig.colorbar(pc, ax = ax)
-            cbar.ax.set_ylabel(f'{variable}', fontsize=28)
-            cbar.ax.tick_params(axis='both', which='both', labelsize=20)
+            cbar.ax.set_ylabel(f'{variable}', fontsize=17)
+            cbar.ax.tick_params(axis='both', which='both', labelsize=12)
+
+    add_text(ax,plt,'NCAS Radar Wind Profiler 1\nCapel Dewi Atmospheric Observatory, Wales, UK')    
 
     plt.tight_layout()
     plt.savefig(f'{save_loc}/ncas-wind-profiler-1_{mode}-mode_multipanel_last-48-hours.png')
@@ -780,8 +825,12 @@ def main(nc_file_path=nc_file_path, plots_path=plots_path, mode=mode):
     
     wind_speed_direction_plot_last48(f'{nc_file_path}/{day_before_yesterday_file}',f'{nc_file_path}/{yesterday_file}', f'{nc_file_path}/{today_file}', plots_path)
 
-    for var in ['upward_air_velocity', 'signal_to_noise_ratio_minimum', 'spectral_width_of_beam_3']:   
-        simple_2d_plot_last24(var, f'{nc_file_path}/{yesterday_file}', f'{nc_file_path}/{today_file}', plots_path) 
+    for var in ['upward_air_velocity']:   
+        simple_2d_plot_last24(var, f'{nc_file_path}/{yesterday_file}', f'{nc_file_path}/{today_file}', plots_path, cmap='RdBu_r', zero_centre_cbar=True) 
+        simple_2d_plot_last48(var, f'{nc_file_path}/{day_before_yesterday_file}', f'{nc_file_path}/{yesterday_file}', f'{nc_file_path}/{today_file}', plots_path, cmap='RdBu_r', zero_centre_cbar=True)
+
+    for var in ['signal_to_noise_ratio_minimum', 'spectral_width_of_beam_3']:
+        simple_2d_plot_last24(var, f'{nc_file_path}/{yesterday_file}', f'{nc_file_path}/{today_file}', plots_path)
         simple_2d_plot_last48(var, f'{nc_file_path}/{day_before_yesterday_file}', f'{nc_file_path}/{yesterday_file}', f'{nc_file_path}/{today_file}', plots_path)
 
     multi_plot_24hrs(['upward_air_velocity', 'signal_to_noise_ratio_minimum', 'spectral_width_of_beam_3'], f'{nc_file_path}/{yesterday_file}', f'{nc_file_path}/{today_file}', plots_path)
