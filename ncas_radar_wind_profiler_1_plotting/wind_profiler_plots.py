@@ -589,8 +589,17 @@ def multi_plot_24hrs(variables, yesterday_ncfile, today_ncfile, save_loc):
                     for j, tt in enumerate(today_ncfile['time'][:]):
                         if int(tt) == time:
                             data[i] = today_ncfile[variable][j]
+
+            if variable == 'upward_air_velocity':
+                cmap = 'RdBu_r'
+                vmax = np.nanpercentile(np.abs(data.compressed()),98)
+                vmin = -np.nanpercentile(np.abs(data.compressed()),98)
+            else:
+                cmap = "viridis"
+                vmax = None
+                vmin = None
             
-            pc = ax.pcolormesh(x,y,data.T)
+            pc = ax.pcolormesh(x,y,data.T,cmap=cmap,vmin=vmin,vmax=vmax)
             ax.xaxis.set_minor_locator(mdates.HourLocator(byhour=range(0,24,2)))
             ax.xaxis.set_minor_formatter(mdates.DateFormatter("%H:%M"))
             ax.xaxis.set_major_locator(mdates.DayLocator())
@@ -723,7 +732,16 @@ def multi_plot_48hrs(variables, day_before_yesterday_ncfile, yesterday_ncfile, t
                         if int(tt) == time:
                             data[i] = today_ncfile[variable][j]
 
-            pc = ax.pcolormesh(x,y,data.T)
+            if variable == 'upward_air_velocity':
+                cmap = 'RdBu_r'
+                vmax = np.nanpercentile(np.abs(data.compressed()),98)
+                vmin = -np.nanpercentile(np.abs(data.compressed()),98)
+            else:
+                cmap = "viridis"
+                vmax = None
+                vmin = None
+
+            pc = ax.pcolormesh(x,y,data.T,cmap=cmap,vmin=vmin,vmax=vmax)
             ax.xaxis.set_minor_locator(mdates.HourLocator(byhour=range(0,24,2)))
             ax.xaxis.set_minor_formatter(mdates.DateFormatter("%H:%M"))
             ax.xaxis.set_major_locator(mdates.DayLocator())
