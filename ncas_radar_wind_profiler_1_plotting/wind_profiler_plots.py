@@ -16,8 +16,8 @@ import os
 # Options to potentially change #
 #################################
 
-nc_file_path = '/gws/pw/j07/ncas_obs_vol1/cdao/processing/ncas-radar-wind-profiler-1/netcdf_files'
-plots_path = '/gws/pw/j07/ncas_obs_vol1/cdao/public/ncas-radar-wind-profiler-1'
+nc_file_path = '/gws/pw/j07/ncas_obs_vol1/amf/processing/ncas-radar-wind-profiler-1/netcdf_files'
+plots_path = '/gws/pw/j07/ncas_obs_vol1/amf/public/ncas-radar-wind-profiler-1'
 mode = 'low'
 
 #################################
@@ -832,11 +832,11 @@ def main(nc_file_path=nc_file_path, plots_path=plots_path, mode=mode):
     yesterday_date = today_date - dt.timedelta(days=1)
     day_before_yesterday_date = today_date - dt.timedelta(days=2)
     
-    today_file = f'ncas-radar-wind-profiler-1_cdao_{today_date.year}{zero_pad_number(today_date.month)}{zero_pad_number(today_date.day)}_snr-winds_{mode}-mode_15min_v1.0.nc'
+    today_file = f'ncas-radar-wind-profiler-1_mobile_{today_date.year}{zero_pad_number(today_date.month)}{zero_pad_number(today_date.day)}_snr-winds_{mode}-mode_15min_v1.0.nc'
     
-    yesterday_file = f'ncas-radar-wind-profiler-1_cdao_{yesterday_date.year}{zero_pad_number(yesterday_date.month)}{zero_pad_number(yesterday_date.day)}_snr-winds_{mode}-mode_15min_v1.0.nc'
+    yesterday_file = f'ncas-radar-wind-profiler-1_mobile_{yesterday_date.year}{zero_pad_number(yesterday_date.month)}{zero_pad_number(yesterday_date.day)}_snr-winds_{mode}-mode_15min_v1.0.nc'
     
-    day_before_yesterday_file = f'ncas-radar-wind-profiler-1_cdao_{day_before_yesterday_date.year}{zero_pad_number(day_before_yesterday_date.month)}{zero_pad_number(day_before_yesterday_date.day)}_snr-winds_{mode}-mode_15min_v1.0.nc'
+    day_before_yesterday_file = f'ncas-radar-wind-profiler-1_mobile_{day_before_yesterday_date.year}{zero_pad_number(day_before_yesterday_date.month)}{zero_pad_number(day_before_yesterday_date.day)}_snr-winds_{mode}-mode_15min_v1.0.nc'
     
     
     wind_speed_direction_plot_last24(f'{nc_file_path}/{yesterday_file}', f'{nc_file_path}/{today_file}', plots_path)
