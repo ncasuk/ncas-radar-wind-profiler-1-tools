@@ -16,8 +16,9 @@ import os
 # Options to potentially change #
 #################################
 
-nc_file_path = '/gws/pw/j07/ncas_obs_vol1/amf/processing/ncas-radar-wind-profiler-1/netcdf_files'
-plots_path = '/gws/pw/j07/ncas_obs_vol1/amf/public/ncas-radar-wind-profiler-1'
+deployment='20230710_woest'
+nc_file_path = f'/gws/pw/j07/ncas_obs_vol1/amf/processing/ncas-radar-wind-profiler-1/{deployment}'
+plots_path = f'/home/users/ncasit/nrwp1_plot_test'
 mode = 'low'
 
 #################################
@@ -831,6 +832,10 @@ def main(nc_file_path=nc_file_path, plots_path=plots_path, mode=mode):
     today_date = dt.datetime.now()
     yesterday_date = today_date - dt.timedelta(days=1)
     day_before_yesterday_date = today_date - dt.timedelta(days=2)
+
+    today_nc_file_path=f'{nc_file_path}/{today_date.year}/{zero_pad_number(today_date.month)}'
+    yesterday_nc_file_path=f'{nc_file_path}/{yesterday_date.year}/{zero_pad_number(yesterday_date.month)}'
+    day_before_yesterday_nc_file_path=f'{nc_file_path}/{day_before_yesterday_date.year}/{zero_pad_number(day_before_yesterday_date.month)}'
     
     today_file = f'ncas-radar-wind-profiler-1_mobile_{today_date.year}{zero_pad_number(today_date.month)}{zero_pad_number(today_date.day)}_snr-winds_{mode}-mode_15min_v1.0.nc'
     
@@ -839,20 +844,20 @@ def main(nc_file_path=nc_file_path, plots_path=plots_path, mode=mode):
     day_before_yesterday_file = f'ncas-radar-wind-profiler-1_mobile_{day_before_yesterday_date.year}{zero_pad_number(day_before_yesterday_date.month)}{zero_pad_number(day_before_yesterday_date.day)}_snr-winds_{mode}-mode_15min_v1.0.nc'
     
     
-    wind_speed_direction_plot_last24(f'{nc_file_path}/{yesterday_file}', f'{nc_file_path}/{today_file}', plots_path)
+    wind_speed_direction_plot_last24(f'{yesterday_nc_file_path}/{yesterday_file}', f'{today_nc_file_path}/{today_file}', plots_path)
     
-    wind_speed_direction_plot_last48(f'{nc_file_path}/{day_before_yesterday_file}',f'{nc_file_path}/{yesterday_file}', f'{nc_file_path}/{today_file}', plots_path)
+    wind_speed_direction_plot_last48(f'{day_before_yesterday_nc_file_path}/{day_before_yesterday_file}',f'{yesterday_nc_file_path}/{yesterday_file}', f'{today_nc_file_path}/{today_file}', plots_path)
 
     for var in ['upward_air_velocity']:   
-        simple_2d_plot_last24(var, f'{nc_file_path}/{yesterday_file}', f'{nc_file_path}/{today_file}', plots_path, cmap='RdBu_r', zero_centre_cbar=True) 
-        simple_2d_plot_last48(var, f'{nc_file_path}/{day_before_yesterday_file}', f'{nc_file_path}/{yesterday_file}', f'{nc_file_path}/{today_file}', plots_path, cmap='RdBu_r', zero_centre_cbar=True)
+        simple_2d_plot_last24(var, f'{yesterday_nc_file_path}/{yesterday_file}', f'{today_nc_file_path}/{today_file}', plots_path, cmap='RdBu_r', zero_centre_cbar=True) 
+        simple_2d_plot_last48(var, f'{day_before_yesterday_nc_file_path}/{day_before_yesterday_file}', f'{yesterday_nc_file_path}/{yesterday_file}', f'{today_nc_file_path}/{today_file}', plots_path, cmap='RdBu_r', zero_centre_cbar=True)
 
     for var in ['signal_to_noise_ratio_minimum', 'spectral_width_of_beam_3']:
-        simple_2d_plot_last24(var, f'{nc_file_path}/{yesterday_file}', f'{nc_file_path}/{today_file}', plots_path)
-        simple_2d_plot_last48(var, f'{nc_file_path}/{day_before_yesterday_file}', f'{nc_file_path}/{yesterday_file}', f'{nc_file_path}/{today_file}', plots_path)
+        simple_2d_plot_last24(var, f'{yesterday_nc_file_path}/{yesterday_file}', f'{today_nc_file_path}/{today_file}', plots_path)
+        simple_2d_plot_last48(var, f'{day_before_yesterday_nc_file_path}/{day_before_yesterday_file}', f'{yesterday_nc_file_path}/{yesterday_file}', f'{today_nc_file_path}/{today_file}', plots_path)
 
-    multi_plot_24hrs(['upward_air_velocity', 'signal_to_noise_ratio_minimum', 'spectral_width_of_beam_3'], f'{nc_file_path}/{yesterday_file}', f'{nc_file_path}/{today_file}', plots_path)
-    multi_plot_48hrs(['upward_air_velocity', 'signal_to_noise_ratio_minimum', 'spectral_width_of_beam_3'], f'{nc_file_path}/{day_before_yesterday_file}', f'{nc_file_path}/{yesterday_file}', f'{nc_file_path}/{today_file}', plots_path)
+    multi_plot_24hrs(['upward_air_velocity', 'signal_to_noise_ratio_minimum', 'spectral_width_of_beam_3'], f'{yesterday_nc_file_path}/{yesterday_file}', f'{today_nc_file_path}/{today_file}', plots_path)
+    multi_plot_48hrs(['upward_air_velocity', 'signal_to_noise_ratio_minimum', 'spectral_width_of_beam_3'], f'{day_before_yesterday_nc_file_path}/{day_before_yesterday_file}', f'{yesterday_nc_file_path}/{yesterday_file}', f'{today_nc_file_path}/{today_file}', plots_path)
 
 
 if __name__ == "__main__":
